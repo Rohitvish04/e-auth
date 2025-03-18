@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>E-Authentication</title>
+    <style>
+        .section { margin: 20px; }
+        #qrCode { max-width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>E-Authentication System</h1>
+    
+    <div class="section" id="register">
+        <h2>Register</h2>
+        <input type="email" id="registerEmail" placeholder="Enter your email">
+        <button onclick="register()">Generate QR Code</button>
+        <img id="qrCode" style="display:none">
+    </div>
+
+    <div class="section" id="verify">
+        <h2>Verify</h2>
+        <input type="email" id="verifyEmail" placeholder="Enter your email">
+        <button onclick="sendOTP()">Send OTP</button>
+        <input type="text" id="otp" placeholder="Enter OTP">
+        <button onclick="verifyOTP()">Verify OTP</button>
+    </div>
+
+    <div class="section" id="status">
+        <h2>Status</h2>
+        <p id="statusMessage"></p>
+    </div>
+
+    <script>
+        async function register() {
+            const email = document.getElementById('registerEmail').value;
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json();
+                if (data.qrCodeUrl) {
+                    const qrCode = document.getElementById('qrCode');
+                    qrCode.src = data.qrCodeUrl;
+                    qrCode.style.display = 'block';
+                    updateStatus(email);
+                } else {
+                    showStatus(data.error);
+                }
+            } catch (error) {
+                showStatus('Registration failed');
+            }
+        }
+
+        async function sendOTP() {
+            const email = document.getElementById('verifyEmail').value;
+            try {
+                const response = await fetch('/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json();
+                showStatus(data.message || data.error);
+            } catch (error) {
+                showStatus('Failed to send OTP');
+            }
+        }
+
+        async function verifyOTP() {
+            const email = document.getElementById('verifyEmail').value;
+            const token = document.getElementById('otp').value;
+            try {
+                const response = await fetch('/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, token })
+                });
+                const data = await response.json();
+                showStatus(data.message || data.error);
+                if (data.message) updateStatus(email);
+            } catch (error) {
+                showStatus('Verification failed');
+            }
+        }
+
+        async function updateStatus(email) {
+            try {
+                const response = await fetch(`/user/${email}`);
+                const data = await response.json();
+                showStatus(`Email: ${data.email}, Verified: ${data.verified}`);
+            } catch (error) {
+                showStatus('Failed to fetch status');
+            }
+        }
+
+        function showStatus(message) {
+            document.getElementById('statusMessage').innerText = message;
+        }
+    </script>
+</body>
+</html>
